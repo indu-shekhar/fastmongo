@@ -1,4 +1,5 @@
 from pydantic import BaseModel, EmailStr, Field
+from typing import Optional
 
 class UserCreate(BaseModel):
     """
@@ -24,8 +25,8 @@ class UserCreate(BaseModel):
 
 
 class UserUpdate(BaseModel):
-    name: str | None = Field(None, min_length=2)
-    age: int | None = Field(None, ge=1, le=120)
+    name: Optional[str] = Field(None, min_length=2)
+    age: Optional[int] = Field(None, ge=1, le=120)
 
 class UserResponse(BaseModel):
     id: str

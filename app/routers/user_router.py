@@ -10,13 +10,18 @@ async def create(users:UserCreate):
     user_id = await user_crud.create_user(user_dict)
     return {"id": str(user_id)}
 
-@router.get("/{user_id}", response_class=UserResponse)
+@router.get("/{user_id}", response_model=UserResponse)
 async def get_user(user_id: str):
     user = await user_crud.get_user(user_id)
     if not user: 
         raise HTTPException(status_code=404, detail="User not found")
     
-    return user
+    return {
+        "id": str(user["_id"]),
+        "name": user["name"],
+        "email": user["email"],
+        "age": user["age"]
+    }
 
 @router.get("/", response_model=list[UserResponse])
 async def list_all():
