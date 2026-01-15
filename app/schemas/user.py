@@ -24,8 +24,8 @@ class UserCreate(BaseModel):
 
 
 class UserUpdate(BaseModel):
-    name: str | None = None
-    age: int | None = None
+    name: str | None = Field(None, min_length=2)
+    age: int | None = Field(None, ge=1, le=120)
 
 class UserResponse(BaseModel):
     id: str
