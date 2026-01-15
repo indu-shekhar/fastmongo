@@ -1,0 +1,43 @@
+fastmongo/
+pyvenv.cfg
+__pycache__/
+*.pyc
+.env
+.env.*
+.DS_Store
+.vscode/
+.idea/
+.ipynb_checkpoints/
+
+# Virtualenv / packaging
+.venv/
+venv/
+env/
+env.bak/
+pip-wheel-metadata/
+__pypackages__/
+dist/
+build/
+.eggs/
+*.egg-info/
+*.egg
+
+# Python test / coverage / caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# DB / runtime files
+*.sqlite3
+*.db
+*.log
+instance/
+
+# Certificates, keys
+*.pem
+*.key
+*.crt
