@@ -1,8 +1,7 @@
 **Redis Strings — Reference & Examples**
 
 ## Index
-
-- [Index](#index)
+/- [Index](#index)
 - [Overview](#overview)
 - [Basic SET/GET](#basic-setget)
 - [SET options (NX, XX, EX, PX, KEEPTTL, GET)](#set-options-nx-xx-ex-px-keepttl-get)
@@ -188,3 +187,38 @@ SETBIT flags 100 1
 BITCOUNT flags
 BITOP AND out f1 f2
 ```
+
+
+
+# Other in general References Guides: 
+
+To delete a value : del key_name
+del name 
+
+the output 0 means , it does not exist or it remains unsuccesful , or the output 1 means it is deleted or the process is sucessful.(it returns a integer number meaning deleted sucessfull or not ....)
+
+
+To setup ttl to have the value for a limited time: just to make sure we are not having stale data in our redis cache we can set a ttl to the key value pair using : 
+
+expire key_name 360000 or something similar like this ... 
+ 
+ expire message:1 10 ## it it might also be both the seting up the value and deletion together : 
+
+ set message:1 "hello world" ex 10  ## it will set the value for 10 seconds only ...
+
+
+ why is redis insane fast : 
+ > data stored in RAM, 
+ > uses I/O multiplexing (epoll), 
+ > single threaded -> no locks, 
+ > optimized C implementation.
+
+ redis is not only cache : 
+ cache 
+ message broker(pub/sub)
+ rate limiter
+ session store
+ distributed locks 
+ leaderboards 
+ real-time counters
+
