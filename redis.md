@@ -1,4 +1,28 @@
 **Redis Strings — Reference & Examples**
+
+## Index
+/- [Index](#index)
+- [Overview](#overview)
+- [Basic SET/GET](#basic-setget)
+- [SET options (NX, XX, EX, PX, KEEPTTL, GET)](#set-options-nx-xx-ex-px-keepttl-get)
+- [Multiple keys: MSET / MGET](#multiple-keys-mset--mget)
+- [Atomic get-and-set: GETSET](#atomic-get-and-set-getset)
+- [Numeric operations (INCR / DECR / INCRBY / INCRBYFLOAT)](#numeric-operations-incr--decr--incrby--incrbyfloat)
+- [String mutation: APPEND / SETRANGE / GETRANGE / STRLEN](#string-mutation-append--setrange--getrange--strlen)
+- [Bit operations: BITCOUNT / BITOP / BITPOS / BITFIELD](#bit-operations-bitcount--bitop--bitpos--bitfield)
+- [Performance and complexity notes](#performance-and-complexity-notes)
+- [Best practices and alternatives](#best-practices-and-alternatives)
+- [Quick redis-cli examples](#quick-redis-cli-examples)
+
+
+## Overview
+
+Redis Strings are the simplest value type in Redis. They can contain any binary sequence, e.g., a JPEG image or a serialized object. The maximum length of a string value is 512 MB.
+
+
+## Basic SET/GET
+
+- SET: store a string value
 ## Other References
 
 ### Deleting keys
@@ -158,29 +182,6 @@ ZINCRBY leaderboard 10 alice            # add 10 to alice's score
 
 Complexity notes: most single-element operations are O(log N); range reads are O(log N + M) where M is number of returned elements.
 
-```
-
-
-## Performance and complexity notes
-
-- Most basic operations (`GET`, `SET`, `INCR`, `DECR`, `MGET`, `MSET`, `GETSET`) are O(1).
-- Operations that touch the whole string or a large range are O(N) where N is the length of the string or the range (examples: `GETRANGE`, `SETRANGE` when they copy/modify many bytes, `BITCOUNT`, `BITOP`).
-- `APPEND` is typically efficient but may be O(1) amortized; extremely large appends may incur reallocation costs.
-- Strings can be up to 512 MB; if you routinely manipulate large blobs consider using hashes/streams/RedisJSON or an external object store.
-
-
-## Best practices and alternatives
-
-- Use `NX` with `SET` for safe creation (avoid race conditions).
-- Prefer `MSET`/`MGET` to reduce round-trips when dealing with many keys.
-- For structured data prefer `HASH` or `RedisJSON` when you need to update individual fields frequently.
-- Use `BITFIELD` and bitmaps for compact counters, flags, and hyperloglog-like patterns when appropriate.
-
-
-## Quick redis-cli examples
-
-Copyable snippets to try in `redis-cli`:
-
 ```bash
 # Basic
 SET user:1:name rahul
@@ -306,8 +307,11 @@ LPOP key #remove from the head
 RPOP key # remove form the tail 
 LRANGE key start stop 
 LLEN key
-LTRIM key start stop
-LINDEX key index
+LTRIM key start stop //inclusive of start and end : it remove all others.
+LINDEX key index. //get the value by their index.
+
+##### blocking pop bhi hota hai kuch : for this you have wait for some time for it to work : 
+result = await r.blpop("queue:tasks", timeout = 5)
 
 
 
@@ -348,8 +352,23 @@ ZREM key member [ member, ....]-remove one or more members; returns number of me
 
 ZINCRBY key increment member- increment member's score by increment ( creates member with score = increment if missing) leaderboard 10 alice 
 
+// top_10 = await r.zrevrange("leaderboard", 0, 9, withscores=True)
 
 
 
+
+
+# PUB_SUB : 
+
+from the publisher code, what I am able to understand: take the values: 
+
+and there is premade method called publish that i suppose we can use with the channel attribute , with the message. 
+
+subscribers = await r.publish(channel, message)
+
+// i suppose this returns the subscribers of the application.
+
+
+above are the publisher code , below we are discussing the subscriber code : 
 
 
