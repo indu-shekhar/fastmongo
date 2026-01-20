@@ -1,137 +1,163 @@
 **Redis Strings — Reference & Examples**
+## Other References
 
-## Index
-/- [Index](#index)
-- [Overview](#overview)
-- [Basic SET/GET](#basic-setget)
-- [SET options (NX, XX, EX, PX, KEEPTTL, GET)](#set-options-nx-xx-ex-px-keepttl-get)
-- [Multiple keys: MSET / MGET](#multiple-keys-mset--mget)
-- [Atomic get-and-set: GETSET](#atomic-get-and-set-getset)
-- [Numeric operations (INCR / DECR / INCRBY / INCRBYFLOAT)](#numeric-operations-incr--decr--incrby--incrbyfloat)
-- [String mutation: APPEND / SETRANGE / GETRANGE / STRLEN](#string-mutation-append--setrange--getrange--strlen)
-- [Bit operations: BITCOUNT / BITOP / BITPOS / BITFIELD](#bit-operations-bitcount--bitop--bitpos--bitfield)
-- [Performance and complexity notes](#performance-and-complexity-notes)
-- [Best practices and alternatives](#best-practices-and-alternatives)
-- [Quick redis-cli examples](#quick-redis-cli-examples)
+### Deleting keys
 
-
-## Overview
-
-Redis Strings are the simplest value type in Redis. They can contain any binary sequence, e.g., a JPEG image or a serialized object. The maximum length of a string value is 512 MB.
-
-
-## Basic SET/GET
-
-- SET: store a string value
+- `DEL key` — remove a key (any type). Returns number of keys removed (0 if key did not exist).
 
 ```bash
-SET key value
+DEL mykey
+# returns 1 if deleted, 0 if not present
 ```
 
-- GET: retrieve a string value
+If you want to remove only specific fields from a hash, use `HDEL key field [field ...]`.
 
 ```bash
-GET key
+HDEL myhash field1 field2
+# returns number of fields removed
 ```
 
 
-## SET options (NX, XX, EX, PX, KEEPTTL, GET)
+### Expiration / TTL
 
-The `SET` command supports several useful options.
+- `EXPIRE key seconds` — set time-to-live in seconds
+- `TTL key` — returns remaining TTL in seconds (or -1 if no TTL, -2 if key missing)
+- `SET key value EX seconds` — set value with expiry in one command
 
-- `NX` — set only if key does not exist (create-once)
-- `XX` — set only if key already exists
-- `EX seconds` — set expire time in seconds
-- `PX milliseconds` — set expire time in milliseconds
-- `KEEPTTL` — retain existing TTL
-- `GET` — return old value and set new value atomically (Redis 6.2+)
+```bash
+SET message:1 "hello" EX 10   # expires after 10 seconds
+EXPIRE cache:42 3600           # set TTL to one hour
+TTL cache:42                   # check remaining seconds
+```
+
+
+### Why Redis is fast
+
+- Data is stored in RAM, so reads/writes are low-latency.
+- Uses efficient I/O multiplexing (epoll/kqueue) for many connections.
+- Single-threaded command execution avoids locks and context switching overhead.
+- Highly optimized C implementation and simple data structures.
+
+
+### Common use-cases
+
+- Cache
+- Message broker (pub/sub)
+- Rate limiter
+- Session store
+- Distributed locks
+- Leaderboards and rankings
+- Real-time counters and analytics
+
+
+## Hashes
+
+Hashes map string fields to string values and are ideal for storing objects.
+
+Use cases: user profiles, configuration, product records.
+
+Core commands:
+
+- `HSET key field value` — set field
+- `HGET key field` — get field value
+- `HMSET key field1 val1 field2 val2` — set multiple fields (deprecated in some clients; prefer `HSET key field1 val1 field2 val2`)
+- `HGETALL key` — get all fields and values
+- `HDEL key field [field ...]` — delete one or more fields
+- `HINCRBY key field increment` — atomically increment integer field
+- `HINCRBYFLOAT key field increment` — increment float field
+- `HEXISTS key field` — check field exists
+- `HKEYS key` — list fields
+- `HVALS key` — list values
 
 Examples:
 
 ```bash
-SET user:1:name "rahul" NX            # create only if not exists
-SET session:123 token EX 3600          # set with 1 hour expiry
-SET key newvalue GET                    # atomically get old then set new
+HSET user:1 name "rahul" age 30
+HGET user:1 name
+HINCRBY user:1 visits 1
+HGETALL user:1
 ```
 
 
-## Multiple keys: MSET / MGET
+## Lists
 
-- `MSET key1 val1 key2 val2 ...` — set multiple keys atomically
-- `MGET key1 key2 ...` — get multiple values
+Ordered collections of strings; useful for queues, stacks, activity feeds.
 
-```bash
-MSET msg:1 "b_bye_baby" msg:2 "i_love_you" msg:3 "take_care"
-MGET msg:1 msg:2 msg:3
-```
+Core commands:
 
-
-## Atomic get-and-set: GETSET
-
-- `GETSET key value` — set new value and return the old value (atomic)
-
-```bash
-GETSET counter "0"   # returns previous value
-```
-
-
-## Numeric operations (INCR / DECR / INCRBY / INCRBYFLOAT)
-
-Strings can hold integer or floating-point numbers and support atomic arithmetic operations.
-
-- `INCR key` — increment integer value by 1
-- `INCRBY key increment` — increment by specified integer
-- `INCRBYFLOAT key increment` — increment by floating point
-- `DECR key` — decrement by 1
-- `DECRBY key decrement` — decrement by specified integer
+- `LPUSH key value` — push to head
+- `RPUSH key value` — push to tail
+- `LPOP key` — pop from head
+- `RPOP key` — pop from tail
+- `LRANGE key start stop` — get range
+- `LLEN key` — length
+- `LTRIM key start stop` — trim list to range
+- `LINDEX key index` — get element by index
 
 Examples:
 
 ```bash
-SET visits 0
-INCR visits          # 1
-INCRBY visits 2      # 3
-INCRBYFLOAT price 0.15
-DECR visits          # 2
+LPUSH tasks "task1"
+RPUSH tasks "task2"
+LRANGE tasks 0 -1
+LPOP tasks
 ```
 
-Note: these commands are atomic and will create the key if it does not exist (initial value 0).
 
+## Sets
 
-## String mutation: APPEND / SETRANGE / GETRANGE / STRLEN
+Unordered collection of unique strings.
 
-- `APPEND key value` — append a value to existing string (returns new length)
-- `SETRANGE key offset value` — overwrite part of the string starting at offset
-- `GETRANGE key start end` — get substring (inclusive indices)
-- `STRLEN key` — get length of string in bytes
+Use cases: unique visitors, tags, relationships, voting systems.
+
+Core commands:
+
+- `SADD key member` — add member
+- `SREM key member` — remove member
+- `SMEMBERS key` — list members
+- `SISMEMBER key member` — test membership
+- `SCARD key` — cardinality
+- `SUNION key1 key2` — union
+- `SINTER key1 key2` — intersection
+- `SDIFF key1 key2` — difference
 
 Examples:
 
 ```bash
-SET greeting "Hello"
-APPEND greeting ", world"         # greeting now "Hello, world"
-GETRANGE greeting 0 4              # returns "Hello"
-SETRANGE greeting 7 "Redis"       # modify starting at offset 7
-STRLEN greeting                    # returns length
+SADD visitors user:1 user:2
+SISMEMBER visitors user:3
+SMEMBERS visitors
 ```
 
 
-## Bit operations: BITCOUNT / BITOP / BITPOS / BITFIELD
+## Sorted sets (ZSET)
 
-Strings are binary-safe and Redis provides bit-level operations useful for bitmaps and compact counters.
+Sorted sets store unique members with a numeric score; members are ordered by score.
 
-- `BITCOUNT key [start end]` — count set bits in a string or range
-- `BITOP op destkey key [key ...]` — perform bitwise operations (AND/OR/XOR/NOT)
-- `BITPOS key bit [start] [end]` — first bit with value 0 or 1
-- `BITFIELD key [GET/SET/INCRBY ...]` — complex bitfield manipulations (useful for packed integers)
+Commands you asked about:
+
+- `ZADD key score member [score member ...]` — add or update members
+- `ZRANGE key start stop [WITHSCORES]` — ascending range (by score)
+- `ZREVRANGE key start stop [WITHSCORES]` — descending range
+- `ZRANK key member` — 0-based rank in ascending order
+- `ZREVRANK key member` — rank in descending order
+- `ZSCORE key member` — return member's score
+- `ZREM key member [member ...]` — remove member(s)
+- `ZINCRBY key increment member` — increment member's score atomically
 
 Examples:
 
 ```bash
-SETBIT mybitmap 10 1                # set bit at offset 10
-BITCOUNT mybitmap                   # count set bits
-BITOP OR dest src1 src2             # dest = src1 OR src2
-BITFIELD stats INCRBY u16 0 1       # increment unsigned 16-bit at pos 0
+ZADD leaderboard 100 alice 150 bob
+ZRANGE leaderboard 0 9 WITHSCORES      # lowest scores first
+ZREVRANGE leaderboard 0 9 WITHSCORES   # highest scores first
+ZRANK leaderboard alice
+ZSCORE leaderboard bob
+ZINCRBY leaderboard 10 alice            # add 10 to alice's score
+```
+
+Complexity notes: most single-element operations are O(log N); range reads are O(log N + M) where M is number of returned elements.
+
 ```
 
 
@@ -221,4 +247,109 @@ expire key_name 360000 or something similar like this ...
  distributed locks 
  leaderboards 
  real-time counters
+
+
+
+
+
+
+ sbse pahle : lets start with the strings: 
+
+ in this i know : 
+ set key value 
+ get key 
+ incr counter
+ decr counter
+ append key value // adds value in the string i suppose...
+ strlen key //to find the length of the string i guess..
+ setex key seconds value # set with expiration 
+ setnx key value  // set if does not exists 
+ mset key1 val1 key2 val2 # multiple set 
+ mget key1
+
+
+
+
+ # Hashes : 
+ maps between strings fields and string values: aik tarah se to sara hi data isi form me hai : pr yha pr
+ 
+ Use cases:
+ user profiles
+ object storage
+ configuration settings 
+ product details
+
+HSET key field value
+HGET KEY field
+HMSET key field1 value1 field2 value2 
+HGETALL key
+HDEL key field # what happens if the i do not mention the field ?: will get error , what you should actually do is : 
+DEL key # to delete the hash ...
+
+HINCRBY key field increment 
+HEXISTS key field 
+HKEYS key # is data ke konse konse key hai 
+HVALS key # is data ke koinse konse value hai 
+
+
+# Lists:
+ordered collection of strings , can act as stacks or queues
+
+task queues
+activity feeds 
+recent items 
+message queues
+
+LPUSH key value #add to the head
+RPUSH key value #add  to the tail
+LPOP key #remove from the head 
+RPOP key # remove form the tail 
+LRANGE key start stop 
+LLEN key
+LTRIM key start stop
+LINDEX key index
+
+
+
+# SET : 
+unordered collection of unique strings. 
+
+use cases:
+unique visitors
+tags
+relationships 
+voting systems
+
+SADD key member #add this member to this set
+SREM key member. #remove this member from the set with the key key
+SMEMBERS key   #mention all members of the key
+SISMEMBER key member #is this the member of this ??
+SCARD key #cardinality of this set
+SUNION key1 key2 #Union of sets
+SINTER key1 key2 #Intersection
+SDIFF key1 key2 #Diffrence
+
+
+# Ordered sets : 
+
+ZADD key score member # exmpl: ZADD leaderboard 100 alice 150 bob
+
+ZRANGE key start stop [WITHSCORES] # ZRANGE leaderboard 0 9 withscores gives top 10 lowest scroes  - returns in ascending score.
+
+ZREVRANGE key start stop [WITHSCORES] # Same as zrange but descending (highest scores first)
+
+ZRANK key member - ZRANK leaderboard alice : return 0-based rank of member in ascending order , or (nil) if missing. Example: zrank leaderboard alice
+
+ZREVRANK key member - return rank in descending order, or (nil) if missing , Example: ZREVRANK leaderboard alice
+
+ZSCORE: zscore key member - return the numeric score of member(string) or (nil) if not present. Example: zscore leaderboard bob
+
+ZREM key member [ member, ....]-remove one or more members; returns number of members, example: ZREM leaderboard alice
+
+ZINCRBY key increment member- increment member's score by increment ( creates member with score = increment if missing) leaderboard 10 alice 
+
+
+
+
+
 
